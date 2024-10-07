@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: medemap-deployment
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: medemap
+  template:
+    metadata:
+      labels:
+        app: medemap
+    spec:
+      containers:
+      - name: medemap
+        image: ghcr.io/pacedproton/medemap:latest
+        ports:
+        - containerPort: 3000
+        resources:
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+          requests:
+            cpu: "250m"
+            memory: "256Mi"
+        env:
+        - name: NEXT_PUBLIC_CESIUM_ION_ACCESS_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: medemap-secrets
+              key: cesium-ion-access-token
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: medemap-secrets
+              key: postgres-user
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: medemap-secrets
+              key: postgres-password
+        - name: POSTGRES_HOST
+          value: "postgres-service"
+        - name: POSTGRES_DB
+          value: "cmc"
+        - name: POSTGRES_PORT
+          value: "5432"
+        readinessProbe:
+          httpGet:
+            path: /api/health?probe=readiness
+            port: 3000
+          initialDelaySeconds: 10
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /api/health?probe=liveness
+            port: 3000
+          initialDelaySeconds: 15
+          periodSeconds: 10
+        startupProbe:
+          httpGet:
+            path: /api/health?probe=startup
+            port: 3000
+          failureThreshold: 30
+          periodSeconds: 10
